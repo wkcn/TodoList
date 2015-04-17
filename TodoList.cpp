@@ -19,14 +19,24 @@ TodoList::TodoList(QWidget *parent) :
     this->setPalette(palette);
 
     //设置字体
-    QPainter painter;
-    font  = painter.font();
+    //QPainter painter;
+    font  = this->font;//painter.font();
     font.setPointSize(20);
-    sFont  = painter.font();
+    sFont  = this->font;//painter.font();
     sFont.setPointSize(15);
-    painter.setFont(font);
-    dateFont  = painter.font();
+    //painter.setFont(font);
+    dateFont  = this->font;//painter.font();
     dateFont.setPointSize(9);
+
+    //针对linux字体显示过大问题
+    #if !defined(Q_OS_WIN)
+        ui->comboBox->setFont(dateFont);
+        ui->radioButton_1->setFont(dateFont);
+        ui->radioButton_2->setFont(dateFont);
+        ui->radioButton_3->setFont(dateFont);
+        ui->radioButton_4->setFont(dateFont);
+        ui->warningBox->setFont(dateFont);
+    #endif
 
     //"+"，标题蓝色
     QPalette   pal;
@@ -56,9 +66,9 @@ TodoList::TodoList(QWidget *parent) :
     QDate qdate = dateTime.date();
     viewDate = Date(qdate.year(),qdate.month(),qdate.day(),0,0);
 
+    viewState = VIEWSTATE::ALL;
     ChangeState(WINSTATE::LIST);
 
-    dmoveY = 0;
     moveAniFrame = maxMoveAniFrame + 1;
     HideWindows(true);
 }
@@ -69,6 +79,7 @@ TodoList::~TodoList(){
 
 void TodoList::timerUpDate(){
     this -> update();
+    //以下为动画处理
     if(warnAniTime > 0){
         warnAniTime --;
         ui->nameBox->move(sin(warnAniTime)*10,0);
@@ -83,6 +94,7 @@ void TodoList::timerUpDate(){
         moveY = moveAniSource + moveAniA * sin(maxMoveAniAngle * 1.0 / maxMoveAniFrame * moveAniFrame);
         moveAniFrame ++;
     }
+    //滑动动画
     int i = 0;
     while(i<indexSize){
         if(indexPosX[i] > 375 && deleteIndex == -1){
@@ -153,7 +165,6 @@ void TodoList::MoveIndex(int id, int x){
 
 void TodoList::mouseReleaseEvent(QMouseEvent *event){
     int x = event->globalPos().x() - this->pos().x();
-    x;
     int y = event->globalPos().y() - this->pos().y();
     moveY = oldMoveY + y - pressY;
     selectIndex = (y - moveY - 95) / 80;
@@ -184,7 +195,7 @@ void TodoList::mouseReleaseEvent(QMouseEvent *event){
 			}
 		}
 		else{
-			//删除单个
+            //删除单个Todo
 			count = 1;
 			validID = id;
 		}
@@ -200,7 +211,6 @@ void TodoList::mouseReleaseEvent(QMouseEvent *event){
 
 void TodoList::mouseMoveEvent(QMouseEvent *event){
     int x = event->globalPos().x() - this->pos().x();
-    x;
     int y = event->globalPos().y() - this->pos().y();
     moveY = oldMoveY + y - pressY;
     selectIndex = (y - moveY - 95) / 80;
@@ -225,8 +235,10 @@ void TodoList::mousePressEvent(QMouseEvent *event){
         viewDate.ToNextMonth();
         ChangeState(WINSTATE::LIST);
     }
-    if(y < 76 && (x >= 255 && x <= 320) && mouseCount >= 2 && mouseList[0] && mouseList[1]){
+    //qDebug("%d %d",x,y);
+    if(y < 76 && (x >= 255 && x <= 320)){
         viewState = VIEWSTATE((int(viewState) + 1)%3);
+        ChangeState(WINSTATE::LIST);
     }
     mouseList[mouseCount ++] = event->button()==Qt::LeftButton;
     mouseTime = 20;
@@ -282,7 +294,6 @@ void TodoList::mousePressEvent(QMouseEvent *event){
             mouseCount = 0;
         }
     }
-    //qDebug("%d %d",x,y);
 }
 
 void TodoList::paintEvent(QPaintEvent *){
@@ -301,11 +312,11 @@ void TodoList::paintEvent(QPaintEvent *){
         string nullText = "出去玩吧 ≥▽≤";
         if(viewState == VIEWSTATE::UNDONE){
             viewType = "未完成";
-            nullText = "出去玩吧 ≥▽≤";
+            nullText = "出去玩吧 ^o^";
         }else{
             if(viewState == VIEWSTATE::WARN){
                 viewType = "提醒";
-                nullText = "没有提醒~";
+                nullText = "没有提醒 ~";
             }
         }
 
@@ -319,51 +330,63 @@ void TodoList::paintEvent(QPaintEvent *){
         int posX = 16,posY = 60;
         posY += moveY;
         int paintX = 0,paintY = 0;
-        paintX;//未使用变量
 
         //用于显示具体日期，这里将同一天的事件归为一类
         int lastDay = 0;
 
-        bool have = false;
+        bool haveTodo = false;
         bool first = true;
         indexSize = 0;
+        int todoSize = pa.GetListSize(viewYear,viewMonth);
 
-		int tempLastDateY = 0;
-        //最大渲染条目
-        const int maxRenderNum = 8;
-        int renderNum = 0;
+        QDateTime qDateTime = QDateTime::currentDateTime();
+        QDate qDate= qDateTime.date();
+        QTime qTime = qDateTime.time();
+        Date nowDate(qDate.year(),qDate.month(),qDate.day(),qTime.hour(),qTime.minute(),qTime.second());
 
-        for(int i=0;i<pa.GetListSize(viewYear,viewMonth);i++){
-          //根据moveY减少渲染事件
-          if(renderNum >= maxRenderNum)break;
+        for(int i=0;i<todoSize;i++){
 
           paintX = indexPosX[indexSize];
           TodoItem &item = pa.GetItem(i,viewYear,viewMonth);
           Date date = item.GetTime();
+
+          if(viewState == VIEWSTATE::UNDONE){
+              if(item.HaveDone())continue;
+          }else if(viewState == VIEWSTATE::WARN){
+              int warnTime = item.GetWarnTime();
+              if(warnTime == 0 || date.GetTime() - nowDate.GetTime() > warnTime){
+                  continue;
+              }
+          }
           //if(date.month != viewMonth || date.year != viewYear)continue;
 
-          have = true;
+          haveTodo = true;
 
           if(date.day != lastDay){
-
               lastDay = date.day;
-              painter.setPen(QPen(Qt::gray));
-              painter.setFont(sFont);
-              char dateText[128];
-              static string weekStr[7] = {"日","一","二","三","四","五","六"};
-              sprintf(dateText,"%d年%.2d月%0.2d日 星期%s   +",date.year,date.month,date.day,weekStr[date.GetWeek()].c_str());
-              painter.drawText(posX + 80 + paintX,posY - 21 + paintY,343,70,Qt::AlignBottom,QString::fromStdString(dateText));
-              painter.setPen(QPen(Qt::black));
+              //优化渲染效率
+              if(posY + 59 +paintY + 50 > 0){
+                  //绘制时间文字
+                  painter.setPen(QPen(Qt::gray));
+                  painter.setFont(sFont);
+                  char dateText[128];
+                  static string weekStr[7] = {"日","一","二","三","四","五","六"};
+                  sprintf(dateText,"%d年%.2d月%.2d日 星期%s   +",date.year,date.month,date.day,weekStr[date.GetWeek()].c_str());
+                  painter.drawText(posX + 80 + paintX,posY - 21 + paintY,343,70,Qt::AlignBottom,QString::fromStdString(dateText));
+                  painter.setPen(QPen(Qt::black));
 
-              if(!first)painter.drawPixmap(posX + 26,posY - 40 + paintY,8,60,line);//圆圈上方线条
+                  if(!first)painter.drawPixmap(posX + 26,posY - 40 + paintY,8,60,line);//圆圈上方线条
+
+
+                  painter.drawPixmap(posX + 9 + paintX,posY + 20 + paintY,40,40,circle);
+                  char dayText[4];
+                  sprintf(dayText,"%.2d",date.day);
+                  painter.drawText(posX + 16 + paintX,posY + 14 + paintY,40,40,Qt::AlignBottom,QString::fromStdString(dayText));
+
+                  painter.drawPixmap(posX + 26,posY + 59 + paintY,8,50,line); //圆圈下方线条
+              }
+
               first = false;
-
-              painter.drawPixmap(posX + 9 + paintX,posY + 20 + paintY,40,40,circle);
-              char dayText[4];
-              sprintf(dayText,"%.2d",date.day);
-              painter.drawText(posX + 16 + paintX,posY + 14 + paintY,40,40,Qt::AlignBottom,QString::fromStdString(dayText));
-
-              painter.drawPixmap(posX + 26,posY + 59 + paintY,8,50,line); //圆圈下方线条
 
               if(indexSize < 128)indexID[indexSize ++] = -1;
 
@@ -372,35 +395,43 @@ void TodoList::paintEvent(QPaintEvent *){
 
           paintX = indexPosX[indexSize];
 
-          painter.drawPixmap(posX + 26,posY + 20 + paintY,8,10,line);//圆点上方
-          painter.drawPixmap(posX + 26,posY + 36 + paintY,8,65,line);//圆点下方
+          if(posY - 26 + paintY + 70 > 0){
+              //绘制圆点上下直线
+              painter.drawPixmap(posX + 26,posY + 20 + paintY,8,10,line);//圆点上方
+              painter.drawPixmap(posX + 26,posY + 36 + paintY,8,65,line);//圆点下方
+              //Todo框
+              painter.drawPixmap(posX + 23 + paintX,posY + paintY,343,70,boxes[item.GetLevel()]);
 
-          painter.drawPixmap(posX + 23 + paintX,posY + paintY,343,70,boxes[item.GetLevel()]);
+              //勾Todo　Havedone
+              if(item.HaveDone())
+                  painter.drawPixmap(posX + 68 + paintX,posY + paintY + 22,25,25,checkPic);
 
-          if(item.HaveDone())
-              painter.drawPixmap(posX + 68 + paintX,posY + paintY + 22,25,25,checkPic);
+              //绘制Todo名称
+              painter.setPen(QPen(Qt::black));
+              painter.setFont(font);
+              painter.drawText(posX + 113 + paintX,posY - 21 + paintY,343,70,Qt::AlignBottom,QString::fromStdString(item.GetName()));
 
-          painter.setPen(QPen(Qt::black));
-          painter.setFont(font);
-          painter.drawText(posX + 113 + paintX,posY - 21 + paintY,343,70,Qt::AlignBottom,QString::fromStdString(item.GetName()));
+              //左侧Todo时间
+              painter.setPen(QPen(Qt::gray));
+              painter.setFont(dateFont);
+              char dateText[16];
+              sprintf(dateText,"%.2d:%.2d",date.hour,date.minute);
+              painter.drawText(posX - 12 + paintX,posY - 26 + paintY,343,70,Qt::AlignBottom,QString::fromStdString(dateText));
+          }
 
-
-          painter.setPen(QPen(Qt::gray));
-          painter.setFont(dateFont);
-          char dateText[16];
-          sprintf(dateText,"%.2d:%.2d",date.hour,date.minute);
-          painter.drawText(posX - 12 + paintX,posY - 26 + paintY,343,70,Qt::AlignBottom,QString::fromStdString(dateText));
           if(indexSize < 128)indexID[indexSize ++] = i; //记录对应todo的id号
 
           paintY += 80;
+          //强行停止渲染
+          if(posY + 20 + paintY > 600)break;
         }
 
         lastDateY = -(paintY);
 
-        if(!have){
+        if(!haveTodo){
             painter.setPen(QPen(Qt::gray));
             painter.setFont(font);
-            painter.drawText(posX + 100 + paintX,posY - 21 + paintY,400,70,Qt::AlignBottom,QString::fromStdString(nullText));
+            painter.drawText(posX + 100,posY - 21,400,70,Qt::AlignBottom,QString::fromStdString(nullText));
         }
 
     }
@@ -423,27 +454,31 @@ void TodoList::on_addTodo_clicked(){
         ChangeState(WINSTATE::EDIT);
         break;
     default:
+        //从添加界面切换到显示界面
         ChangeState(WINSTATE::LIST);
     }
 }
 
 void TodoList::ChangeState(WINSTATE state){
     this -> state = state;
-    viewState = VIEWSTATE::ALL;
+    //viewState = VIEWSTATE::ALL;
     indexSize = 0;
+    selectIndex = 0;
+    indexSize = 0;
+    indexPosX[0] = 0;
+    deleteIndex = -1;
+
 	warnAniTime = 0;
+    waitTime = 0;
+    moveY = oldMoveY = 0;
+    oldMoveX = 0;
+    lastDateY = 0;
+
 	mouseCount = 0;
 	mouseTime = 0;
-	moveY = oldMoveY = 0;
-	oldMoveX = 0;
 	pressX = pressY = 0;
 	mousePre = false;
-	selectIndex = 0;
-	indexSize = 0;
-	indexPosX[0] = 0;
-	waitTime = 0;
-	deleteIndex = -1;
-	lastDateY = 0;
+
     switch (state){
     case WINSTATE::EDIT:
         ui->addTodo->setText("x");
@@ -459,7 +494,7 @@ void TodoList::ChangeState(WINSTATE state){
         ui->addTodo->setText("+");
         HideWindows(true);
         indexPosX[7] = -1600;
-        for(int j=6;j>=0;j--)indexPosX[j] = indexPosX[j + 1] * 0.68;
+        for(int j=6;j>=0;j--)indexPosX[j] = indexPosX[j + 1] * 0.68; //第一次的进入动画
         for(int i=8;i<128;i++)indexPosX[i] = 0;
         moveY = 0;
         break;
@@ -523,7 +558,7 @@ void TodoList::on_confirmButton_clicked(){
     if(state == WINSTATE::EDIT){
         pa.AddTodo(item);
     }else if(state == WINSTATE::DETAIL){
-        pa.ChangeTodo(item,selectID);
+        pa.ChangeTodo(item,selectID,viewDate.year,viewDate.month);
     }
 
     ChangeState(WINSTATE::LIST);

@@ -33,17 +33,18 @@ void PA::RemoveTodo(int id,int count, int viewYear, int viewMonth){
 
 void PA::RemoveTodo(set<int> ids, int viewYear, int viewMonth){
 	set<int>::iterator iter = ids.begin();
-
+    viewYear;
+    viewMonth;
+    //该功能暂时没有实现
 }
 
-void PA::ChangeTodo(TodoItem item, int id){
+void PA::ChangeTodo(TodoItem item, int id, int viewYear, int viewMonth){
     Date date = item.GetTime();
     int dateID = GetDateID(date.year,date.month);
 
     changedList.insert(dateID);
-    vector<TodoItem> *items = itemsList[dateID];
-    (*items)[id] = item;
-    sort(items->rbegin(),items->rend());
+    RemoveTodo(id,viewYear,viewMonth);
+    AddTodo(item);
 }
 
 void PA::ListTodos(){
@@ -84,24 +85,26 @@ string PA::TextIn(istream &is){
 	is >> r;
 	string buf;
 	char c;
-	//is >> c;
-	c = is.get();//跳到下一行
-	while (!is.eof()){
-		c = is.get();
-		buf += c;
-		if (c == '\n' || c == '\r'){
-			r--;
-			if (r <= 0){
-				break;
-			}
-		}
-	}
+    //windows中以\r\n换行,linux中以\n换行~
+    c = is.get();if(c == '\r')c = is.get(); //jump end sign
+    while(!is.eof()){
+        c = is.get();if(c == '\r')c = is.get(); //jump end sign
+        if(c == '\n'){
+            r--;
+            if (r <= 0){
+                break;
+            }
+        }
+        buf += c;
+    }
+
 	if (buf.size() > 0 && buf[buf.size() - 1] == '\n')buf.pop_back();
 	return buf;
 }
 
 void PA::LoadData(int viewYear,int viewMonth){
 	int dateID = GetDateID(viewYear, viewMonth);
+    //当该日期未读取时，新建或读取相应数据
 	if (!itemsList.count(dateID)){
 		itemsList[dateID] = new vector < TodoItem >;
 
@@ -120,6 +123,7 @@ void PA::LoadData(int viewYear,int viewMonth){
 				item.SetLevel(level);
 				Date date;
 				fin >> date.year >> date.month >> date.day >> date.hour >> date.minute;
+                date.Update();//更新int时间！
 				item.SetTime(date);
 				item.SetPlace(TextIn(fin));
 				item.SetContent(TextIn(fin));

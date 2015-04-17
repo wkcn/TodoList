@@ -84,6 +84,13 @@
       <height>16</height>
      </rect>
     </property>
+    <property name="font">
+     <font>
+      <pointsize>9</pointsize>
+      <weight>75</weight>
+      <bold>true</bold>
+     </font>
+    </property>
     <property name="text">
      <string>很重要-很紧急</string>
     </property>
@@ -334,10 +341,10 @@
      <string>添加</string>
     </property>
     <property name="autoDefault">
-     <bool>true</bool>
+     <bool>false</bool>
     </property>
     <property name="default">
-     <bool>true</bool>
+     <bool>false</bool>
     </property>
     <property name="flat">
      <bool>true</bool>

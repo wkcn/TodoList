@@ -49,6 +49,7 @@ void Date::ToLastMonth(){
     }
     day = min(MonthHaveDay(month,IsLeapYear(year)),day);
     updated = false;
+    Update();
 }
 
 void Date::ToNextMonth(){
@@ -59,6 +60,7 @@ void Date::ToNextMonth(){
     }
     day = min(MonthHaveDay(month,IsLeapYear(year)),day);
     updated = false;
+    Update();
 }
 
 Date::Date(int year,int month,int day,int hour,int minute,int second){
@@ -70,10 +72,11 @@ Date::Date(int year,int month,int day,int hour,int minute,int second){
     this -> minute = minute;
     this -> second = second;
     updated = false;
+    Update();
 }
 
 bool Date::operator < (const Date &b) const {
-    return GetTime() < b.GetTime();
+    return intTime < b.intTime;
 }
 
 Date GetDate(int offsetHour){
@@ -96,7 +99,18 @@ Date GetDate(int offsetHour){
     return d;
 }
 
-int Date::GetTime() const{
+int Date::GetTime(){
+    Update();
+    return intTime;
+}
+
+int Date::operator()(){
+    return GetTime();
+}
+
+void Date::Update(){
+    if(updated)return; //如果已经为最新
+    //更新intTime
     int count = 0;
     count += second + minute * 60 + hour * 60 * 60 + day * 24 * 60 * 60;
     Date d = *this;
@@ -112,14 +126,9 @@ int Date::GetTime() const{
         count -= YearHaveDay(d.year) * 24 * 60 * 60;
         d.year ++;
     }
-    return count;
-}
+    intTime = count;
 
-int Date::operator()(){
-    return GetTime();
-}
-
-void Date::UpdateDateWeek(){
+    //更新Week
     int dyear = 1970;
     int dmonth = 1;
     //int dday = 1;
@@ -138,8 +147,6 @@ void Date::UpdateDateWeek(){
 }
 
 int Date::GetWeek(){
-    if(!updated){
-        UpdateDateWeek();
-    }
+    Update();
     return week;
 }

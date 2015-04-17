@@ -7,6 +7,7 @@
 QT       += core gui
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
+QMAKE_CXXFLAGS += -std=c++11
 
 TARGET = TodoList
 TEMPLATE = app
@@ -25,3 +26,9 @@ HEADERS  += \
     TodoList.h
 
 FORMS    += todolist.ui
+
+RC_FILE += ico.rc
+
+OTHER_FILES += \
+    mypa.ico \
+    ico.rc
