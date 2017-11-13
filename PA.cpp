@@ -142,6 +142,11 @@ void PA::LoadData(int viewYear,int viewMonth){
 }
 
 void PA::SaveData(){
+	QString folder = GetFileDir("data");
+	QDir dir(folder);
+	if (!dir.exists()){
+		dir.mkdir(folder);
+	}
     //之所以这样直接保存，是为了方便查看
     for(int id:changedList){
         char fileName[64];
