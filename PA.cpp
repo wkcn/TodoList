@@ -28,11 +28,9 @@ void PA::RemoveTodo(int id, int count, int viewYear, int viewMonth) {
   (*items).erase(iter + id, iter + id + count);
 }
 
-void PA::RemoveTodo(set<int> ids, int viewYear, int viewMonth) {
-  set<int>::iterator iter = ids.begin();
-  viewYear;
-  viewMonth;
-  //该功能暂时没有实现
+void PA::RemoveTodo(set<int> /*ids*/, int /*viewYear*/, int /*viewMonth*/) {
+  // set<int>::iterator iter = ids.begin();
+  // 该功能暂时没有实现
 }
 
 void PA::ChangeTodo(TodoItem item, int id, int viewYear, int viewMonth) {

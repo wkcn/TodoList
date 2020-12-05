@@ -31,13 +31,17 @@ class TodoList : public QMainWindow {
   void HideWindows(bool hidden);     //隐藏编辑界面
   void ChangeState(WINSTATE state);  //更改界面
   void MoveIndex(int id, int x);     //滑动选项（动画）
+  void StartAniTimer();
+  void StopAniTimer();
   void SetWarnText(int position);
   void mousePressEvent(QMouseEvent *);
   void mouseMoveEvent(QMouseEvent *);
   void mouseReleaseEvent(QMouseEvent *);
+  void wheelEvent(QWheelEvent *);
 
  private:
   Ui::TodoList *ui;
+  QTimer *aniTimer;
   QPixmap boxes[4];
   QPixmap checkPic, line, circle, selectBox;
   WINSTATE state;

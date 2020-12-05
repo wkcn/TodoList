@@ -7,9 +7,8 @@ TodoList::TodoList(QWidget *parent)
 
   state = WINSTATE::LIST;
 
-  QTimer *timer = new QTimer(this);
-  connect(timer, SIGNAL(timeout()), this, SLOT(timerUpDate()));
-  timer->start(10);  // FPS 100
+  aniTimer = new QTimer(this);
+  connect(aniTimer, SIGNAL(timeout()), this, SLOT(timerUpDate()));
 
   //设置白色背景
   QPalette palette;
@@ -57,9 +56,9 @@ TodoList::TodoList(QWidget *parent)
   selectBox = QPixmap(GetFileDir("pic//box.png"));
 
   //设置数据
-  char temp[128];
-  sprintf(temp, "我的一天 - %s", pa.GetName().c_str());
-  this->setWindowTitle(QString::fromStdString(temp));
+  string title = "我的一天 - " + pa.GetName();
+  this->setWindowTitle(QString::fromStdString(title));
+
   QDateTime dateTime = QDateTime::currentDateTime();
   QDate qdate = dateTime.date();
   viewDate = Date(qdate.year(), qdate.month(), qdate.day(), 0, 0);
@@ -67,23 +66,40 @@ TodoList::TodoList(QWidget *parent)
   viewState = VIEWSTATE::ALL;
   ChangeState(WINSTATE::LIST);
 
-  moveAniFrame = maxMoveAniFrame + 1;
+  moveAniFrame = 0;
   HideWindows(true);
+
+  StartAniTimer();
 }
 TodoList::~TodoList() {
   // pa的保存由PA的析构函数完成，因此这里不用额外写
   delete ui;
 }
 
+void TodoList::StartAniTimer() {
+  if (!aniTimer->isActive()) {
+    aniTimer->start(10);  // FPS 100
+  }
+}
+
+void TodoList::StopAniTimer() {
+  if (aniTimer->isActive()) {
+    aniTimer->stop();
+  }
+}
+
 void TodoList::timerUpDate() {
   this->update();
   //以下为动画处理
+  bool updated = false;
   if (warnAniTime > 0) {
     warnAniTime--;
     ui->nameBox->move(sin(warnAniTime) * 10, 0);
+    updated = true;
   }
   if (mouseTime > 0) {
     mouseTime--;
+    updated = true;
   } else {
     mouseCount = 0;
   }
@@ -92,6 +108,7 @@ void TodoList::timerUpDate() {
     moveY = moveAniSource + moveAniA * sin(maxMoveAniAngle * 1.0 /
                                            maxMoveAniFrame * moveAniFrame);
     moveAniFrame++;
+    updated = true;
   }
   //滑动动画
   int i = 0;
@@ -105,8 +122,13 @@ void TodoList::timerUpDate() {
     if (i != selectIndex || !mousePre) {
       int u = indexPosX[i] * 0.92;
       indexPosX[i] = u;
+      if (u > 0)
+        updated = true;
     }
     i++;
+  }
+  if (!updated) {
+    StopAniTimer();
   }
 }
 
@@ -162,6 +184,7 @@ void TodoList::MoveIndex(int id, int x) {
 }
 
 void TodoList::mouseReleaseEvent(QMouseEvent *event) {
+  StartAniTimer();
   int x = event->globalPos().x() - this->pos().x();
   int y = event->globalPos().y() - this->pos().y();
   moveY = oldMoveY + y - pressY;
@@ -208,6 +231,7 @@ void TodoList::mouseReleaseEvent(QMouseEvent *event) {
 }
 
 void TodoList::mouseMoveEvent(QMouseEvent *event) {
+  StartAniTimer();
   int x = event->globalPos().x() - this->pos().x();
   int y = event->globalPos().y() - this->pos().y();
   moveY = oldMoveY + y - pressY;
@@ -218,6 +242,7 @@ void TodoList::mouseMoveEvent(QMouseEvent *event) {
 }
 
 void TodoList::mousePressEvent(QMouseEvent *event) {
+  StartAniTimer();
   int x = event->globalPos().x() - this->pos().x();
   int y = event->globalPos().y() - this->pos().y();
   pressX = x;
@@ -295,6 +320,11 @@ void TodoList::mousePressEvent(QMouseEvent *event) {
       mouseCount = 0;
     }
   }
+}
+
+void TodoList::wheelEvent(QWheelEvent *event) {
+  StartAniTimer();
+  moveY += event->angleDelta().y() / 5;
 }
 
 void TodoList::paintEvent(QPaintEvent *) {
