@@ -184,7 +184,6 @@ void TodoList::MoveIndex(int id, int x) {
 }
 
 void TodoList::mouseReleaseEvent(QMouseEvent *event) {
-  StartAniTimer();
   int x = event->globalPos().x() - this->pos().x();
   int y = event->globalPos().y() - this->pos().y();
   moveY = oldMoveY + y - pressY;
@@ -228,10 +227,10 @@ void TodoList::mouseReleaseEvent(QMouseEvent *event) {
     pa.RemoveTodo(validID, count, viewDate.year, viewDate.month);
     deleteIndex = -1;
   }
+  StartAniTimer();
 }
 
 void TodoList::mouseMoveEvent(QMouseEvent *event) {
-  StartAniTimer();
   int x = event->globalPos().x() - this->pos().x();
   int y = event->globalPos().y() - this->pos().y();
   moveY = oldMoveY + y - pressY;
@@ -239,10 +238,10 @@ void TodoList::mouseMoveEvent(QMouseEvent *event) {
   if (ValidIndex()) {
     MoveIndex(selectIndex, oldMoveX + x - pressX);
   }
+  StartAniTimer();
 }
 
 void TodoList::mousePressEvent(QMouseEvent *event) {
-  StartAniTimer();
   int x = event->globalPos().x() - this->pos().x();
   int y = event->globalPos().y() - this->pos().y();
   pressX = x;
@@ -320,11 +319,13 @@ void TodoList::mousePressEvent(QMouseEvent *event) {
       mouseCount = 0;
     }
   }
+  StartAniTimer();
 }
 
 void TodoList::wheelEvent(QWheelEvent *event) {
+  int dy = event->angleDelta().y();
+  moveY += dy / 5;
   StartAniTimer();
-  moveY += event->angleDelta().y() / 5;
 }
 
 void TodoList::paintEvent(QPaintEvent *) {
@@ -541,8 +542,10 @@ void TodoList::ChangeState(WINSTATE state) {
         indexPosX[j] = indexPosX[j + 1] * 0.68;  //第一次的进入动画
       for (int i = 8; i < 128; i++) indexPosX[i] = 0;
       moveY = 0;
+      moveAniFrame = 0;
       break;
   }
+  StartAniTimer();
 }
 
 void TodoList::SetWarnText(int position) {
